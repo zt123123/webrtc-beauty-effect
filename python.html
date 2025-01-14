@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>python</title>
+    <style>
+        body {
+            margin: 0;
+            margin-top: 200px;
+        }
+
+        video {
+            width: 640px;
+            height: 320px;
+            display: block;
+            object-position: left center;
+        }
+
+        .controls {
+            margin: 20px;
+        }
+
+        .control-group {
+            margin: 10px 0;
+        }
+
+        .label {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        #videoCanvas {
+            margin-top: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="label">原始视频</div>
+    <video class="ovideo" autoplay playsinline></video>
+    <div class="label">美颜视频</div>
+    <video class="video" autoplay playsinline></video>
+    <canvas id="videoCanvas" width="1280" height="720"></canvas>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8765');
+        const canvas = document.querySelector('#videoCanvas');
+
+        const video = document.querySelector('.video');
+        const ovideo = document.querySelector('.ovideo');
+        const ctx = canvas.getContext('2d');
+
+        const VIDEO_WIDTH = 1280;
+        const VIDEO_HEIGHT = 720;
+
+        (async function init() {
+            const oStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: VIDEO_WIDTH,
+                    height: VIDEO_HEIGHT,
+                }
+            })
+
+            const stream = canvas.captureStream();
+            video.srcObject = stream;
+            video.muted = true;
+            video.play();
+            ovideo.muted = true;
+            ovideo.srcObject = oStream
+            ovideo.play();
+        })()
+
+        let nativeWidth = VIDEO_WIDTH;
+        let nativeHeight = VIDEO_HEIGHT;
+        let isResolutionSet = false;
+        let lastFrameTime = performance.now();
+        const frameInterval = 33; // 30 FPS
+        let frameBuffer = [];
+        const maxBufferSize = 2;
+
+        function processFrame() {
+            if (frameBuffer.length > 0) {
+                const frame = frameBuffer.shift();
+
+                // 创建临时canvas
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = nativeWidth;
+                tempCanvas.height = nativeHeight;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                // 创建ImageData
+                const imageData = new ImageData(new Uint8ClampedArray(frame.data), nativeWidth, nativeHeight);
+
+                // 绘制到临时canvas
+                tempCtx.putImageData(imageData, 0, 0);
+
+                // 清除主canvas
+                ctx.clearRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+
+                // 绘制到主canvas
+                ctx.drawImage(tempCanvas, 0, 0, nativeWidth, nativeHeight, 0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+            }
+
+            requestAnimationFrame(processFrame);
+        }
+
+        ws.onmessage = async function (event) {
+            const arrayBuffer = await event.data.arrayBuffer();
+
+            // 检查是否是分辨率信息
+            if (!isResolutionSet) {
+                const text = new TextDecoder().decode(arrayBuffer);
+                if (text.startsWith('RES:')) {
+
+                    const [w, h] = text.slice(4).split(':');
+                    nativeWidth = parseInt(w);
+                    nativeHeight = parseInt(h);
+                    console.log(`Native resolution: ${nativeWidth}x${nativeHeight}`);
+                    isResolutionSet = true;
+                    return;
+                }
+            }
+
+            try {
+                const compressedData = new Uint8Array(arrayBuffer);
+
+                // 解压缩数据
+                const decompressed = pako.inflate(compressedData);
+
+                // 验证解压后数据大小
+                const expectedSize = nativeWidth * nativeHeight * 4;
+                if (decompressed.length !== expectedSize) {
+                    throw new Error(`Invalid decompressed size: ${decompressed.length}, expected: ${expectedSize}`);
+                }
+
+                // 控制帧缓冲
+                if (frameBuffer.length >= maxBufferSize) {
+                    frameBuffer.shift(); // 丢弃最旧的帧
+                }
+
+                frameBuffer.push({
+                    data: decompressed,
+                    timestamp: performance.now()
+                });
+            } catch (error) {
+                console.error('Error processing frame:', error);
+            }
+        };
+
+        ws.onerror = function (error) {
+            console.error('WebSocket Error:', error);
+        };
+
+        ws.onclose = function () {
+            console.log('WebSocket connection closed');
+        };
+
+        // 启动帧处理循环
+        processFrame();
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+</body>
+
+</html>
