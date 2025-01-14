@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>canvas</title>
+    <style>
+        body {
+            margin: 0;
+            margin-top: 200px;
+        }
+
+        video {
+            width: 640px;
+            height: 320px;
+            display: block;
+            object-position: left center;
+        }
+
+        .controls {
+            margin: 20px;
+        }
+
+        .control-group {
+            margin: 10px 0;
+        }
+
+        .label {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="label">原始视频</div>
+    <video class="ovideo" autoplay playsinline></video>
+    <div class="label">美颜视频</div>
+    <video class="video" autoplay playsinline></video>
+    <script src="canvas.js"></script>
+    <script>
+        window.addEventListener('load', async () => {
+
+            // 获取视频流
+            try {
+                const ovideo = document.querySelector('.ovideo');
+                const video = document.querySelector('.video');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: 1280,
+                        height: 720
+                    }
+                });
+                ovideo.srcObject = stream
+                const beautyStream = await applyBeautyFilter(stream)
+                video.srcObject = beautyStream
+            } catch (error) {
+                console.error('获取视频流失败:', error);
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>WebGL</title>
+    <style>
+        body {
+            margin: 0;
+            margin-top: 200px;
+        }
+
+        video {
+            width: 640px;
+            height: 320px;
+            display: block;
+            object-position: left center;
+        }
+
+        .controls {
+            margin: 20px;
+        }
+
+        .control-group {
+            margin: 10px 0;
+        }
+
+        .label {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="label">原始视频</div>
+    <video class="ovideo" autoplay playsinline></video>
+    <div class="label">美颜视频</div>
+    <video id="video" autoplay playsinline></video>
+
+    <!-- 控制器 -->
+    <div class="controls">
+        <div class="control-group">
+            <label for="smooth">磨皮：</label>
+            <input type="range" id="smooth" min="0" max="100" value="50">
+            <span id="smoothValue">50</span>
+        </div>
+        <div class="control-group">
+            <label for="whiten">美白：</label>
+            <input type="range" id="whiten" min="0" max="100" value="50">
+            <span id="whitenValue">50</span>
+        </div>
+        <div class="control-group">
+            <label for="rosy">红润：</label>
+            <input type="range" id="rosy" min="0" max="100" value="50">
+            <span id="rosyValue">50</span>
+        </div>
+        <div class="control-group">
+            <label for="sharpen">锐化：</label>
+            <input type="range" id="sharpen" min="0" max="100" value="50">
+            <span id="sharpenValue">50</span>
+        </div>
+    </div>
+
+    <script src="webgl.js"></script>
+    <script>
+        window.addEventListener('load', async () => {
+
+            // 获取视频流
+            try {
+                const ovideo = document.querySelector('.ovideo');
+                const video = document.querySelector('#video');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: 1280,
+                        height: 720,
+                    }
+                });
+                ovideo.srcObject = stream
+                video.srcObject = stream;
+
+                const filter = new BeautyFilter();
+                await filter.init(stream); // 使用 init 方法初始化
+
+                // 绑定滑块事件
+                ['smooth', 'whiten', 'rosy', 'sharpen'].forEach(param => {
+                    const slider = document.getElementById(param);
+                    const valueSpan = document.getElementById(`${param}Value`);
+                    slider.addEventListener('input', () => {
+                        const value = slider.value;
+                        valueSpan.textContent = value;
+                        filter.setBeautyParams({ [param]: parseFloat(value) });
+                    });
+                });
+            } catch (error) {
+                console.error('获取视频流失败:', error);
+            }
+        });
+    </script>
+</body>
+
+</html>

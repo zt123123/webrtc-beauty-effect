@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGPU</title>
+  <style>
+    body {
+      margin: 0;
+      margin-top: 200px;
+    }
+
+    video {
+      width: 640px;
+      height: 320px;
+      display: block;
+      object-position: left center;
+    }
+
+    .controls {
+      margin: 20px;
+    }
+
+    .control-group {
+      margin: 10px 0;
+    }
+
+    .label {
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+
+    #canvas {
+      margin-top: 100px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="label">原始视频</div>
+  <video class="ovideo" autoplay playsinline></video>
+  <div class="label">美颜视频</div>
+  <video class="video" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
+  <script src="webgpu.js"></script>
+</body>
+
+</html>
